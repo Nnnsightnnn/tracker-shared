@@ -17,8 +17,8 @@ const CONFIG = {
   liverpool: { url: `${ESPN}/soccer/eng.1/scoreboard`,    abbr: "LIV" },
 };
 
-const POLL_LIVE_MS = 30_000;
-const POLL_IDLE_MS = 10 * 60_000;
+const POLL_LIVE_MS = 30_000;        // 30s during live game
+const POLL_IDLE_MS = 10 * 60_000;   // 10min when no live game
 
 export async function trackLiveScore({ team, target, onUpdate }) {
   const cfg = CONFIG[team];
@@ -30,6 +30,7 @@ export async function trackLiveScore({ team, target, onUpdate }) {
   const tick = async () => {
     if (stopped) return;
     if (document.hidden) {
+      // Don't poll when tab is hidden — saves battery and rate budget
       timer = setTimeout(tick, POLL_IDLE_MS);
       return;
     }
@@ -52,6 +53,7 @@ export async function trackLiveScore({ team, target, onUpdate }) {
     }
   };
 
+  // Resume polling promptly when tab becomes visible
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && !stopped) {
       clearTimeout(timer);
@@ -68,6 +70,7 @@ export async function trackLiveScore({ team, target, onUpdate }) {
 }
 
 function findRelevantGame(events, abbr) {
+  // Priority: live game with our team > today's game > nothing
   const ours = events.filter(ev =>
     ev.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr)
   );
@@ -76,6 +79,7 @@ function findRelevantGame(events, abbr) {
   const live = ours.find(ev => ev.status?.type?.state === "in");
   if (live) return parseEvent(live, abbr);
 
+  // Most recent or upcoming
   return parseEvent(ours[0], abbr);
 }
 
@@ -86,14 +90,15 @@ function parseEvent(ev, abbr) {
   const status = ev.status.type;
 
   return {
-    state: status.state,
-    detail: status.detail,
+    state: status.state,        // "pre" | "in" | "post"
+    detail: status.detail,       // human-readable
     clock: ev.status.displayClock,
     period: ev.status.period,
     home: { name: home.team.displayName, abbr: home.team.abbreviation, score: home.score },
     away: { name: away.team.displayName, abbr: away.team.abbreviation, score: away.score },
     startTime: ev.date,
     isOurTeamHome: home.team.abbreviation === abbr,
+    // Goals, cards, etc. — soccer & some other sports
     events: (comp.details || []).map(d => ({
       clock: d.clock?.displayValue,
       type: d.type?.text,
