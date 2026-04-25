@@ -1,0 +1,11 @@
+.ls-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
+.ls-card[data-state="in"] { border-left: 4px solid #f85149; }
+.ls-status { font-size: 0.85rem; color: #8b949e; margin-bottom: 0.5rem; }
+.ls-teams { display: flex; flex-direction: column; gap: 0.4rem; }
+.ls-team { display: flex; justify-content: space-between; }
+.ls-abbr { font-weight: 600; }
+.ls-score { font-variant-numeric: tabular-nums; }
+.ls-live { display: inline-block; width: 8px; height: 8px; background: #f85149; border-radius: 50%; animation: ls-pulse 1.2s infinite; }
+.ls-events { list-style: none; padding: 0; margin-top: 0.5rem; font-size: 0.85rem; color: #8b949e; }
+.ls-events li { padding: 0.15rem 0; }
+@keyframes ls-pulse { 50% { opacity: 0.3; } }

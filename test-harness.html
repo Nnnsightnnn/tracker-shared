@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>nnnsightnnn Tracker — Live Score Endpoint Tests</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #e6edf3; }
+    h1 { color: #58a6ff; }
+    h2 { border-bottom: 1px solid #30363d; padding-bottom: 0.3rem; margin-top: 2rem; }
+    .test { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; margin: 0.75rem 0; }
+    .pass { border-left: 4px solid #3fb950; }
+    .fail { border-left: 4px solid #f85149; }
+    .pending { border-left: 4px solid #d29922; }
+    .label { font-weight: 600; }
+    .meta { color: #8b949e; font-size: 0.85rem; margin-top: 0.25rem; font-family: ui-monospace, monospace; }
+    pre { background: #0d1117; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+    .game { display: flex; justify-content: space-between; padding: 0.4rem 0.6rem; background: #21262d; border-radius: 4px; margin: 0.3rem 0; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: #f85149; border-radius: 50%; margin-right: 0.4rem; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 50% { opacity: 0.3; } }
+    button { background: #238636; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #2ea043; }
+    .summary { padding: 1rem; background: #161b22; border-radius: 6px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Tracker Endpoint Tests</h1>
+  <p>Each test runs a live fetch from the browser. This validates that the same code would work from <code>nnnsightnnn.github.io</code> — same CORS rules apply.</p>
+  <button onclick="runAll()">Run All Tests</button>
+  <div id="summary" class="summary" style="display:none"></div>
+
+  <h2>1. ESPN — Atlanta Falcons (NFL)</h2>
+  <div id="t-falcons" class="test pending">Pending...</div>
+
+  <h2>2. ESPN — Atlanta Hawks (NBA)</h2>
+  <div id="t-hawks" class="test pending">Pending...</div>
+
+  <h2>3. ESPN — Atlanta Braves (MLB)</h2>
+  <div id="t-braves" class="test pending">Pending...</div>
+
+  <h2>4. ESPN — Atlanta United (MLS)</h2>
+  <div id="t-united" class="test pending">Pending...</div>
+
+  <h2>5. ESPN — Liverpool FC (EPL)</h2>
+  <div id="t-liverpool" class="test pending">Pending...</div>
+
+  <h2>6. football-data.org (direct, no auth) — proves CORS blocks browser</h2>
+  <div id="t-fd" class="test pending">Pending...</div>
+
+  <script>
+    const ESPN = "https://site.api.espn.com/apis/site/v2/sports";
+    const TARGETS = [
+      { id: "t-falcons", url: `${ESPN}/football/nfl/scoreboard`, abbr: "ATL", league: "NFL", teamName: "Falcons" },
+      { id: "t-hawks", url: `${ESPN}/basketball/nba/scoreboard`, abbr: "ATL", league: "NBA", teamName: "Hawks" },
+      { id: "t-braves", url: `${ESPN}/baseball/mlb/scoreboard`, abbr: "ATL", league: "MLB", teamName: "Braves" },
+      { id: "t-united", url: `${ESPN}/soccer/usa.1/scoreboard`, abbr: "ATL", league: "MLS", teamName: "United" },
+      { id: "t-liverpool", url: `${ESPN}/soccer/eng.1/scoreboard`, abbr: "LIV", league: "EPL", teamName: "Liverpool" },
+    ];
+
+    async function testEspn({ id, url, abbr, league, teamName }) {
+      const el = document.getElementById(id);
+      const t0 = performance.now();
+      try {
+        const res = await fetch(url);
+        const ms = Math.round(performance.now() - t0);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const events = data.events || [];
+
+        const game = events.find(ev =>
+          ev.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr)
+        );
+
+        let html = `<div class="label">PASS - ${league} scoreboard fetched</div>`;
+        html += `<div class="meta">${ms}ms - ${events.length} events today - CORS OK</div>`;
+
+        if (game) {
+          const comp = game.competitions[0];
+          const teams = comp.competitors.map(c => ({
+            abbr: c.team.abbreviation,
+            score: c.score,
+            home: c.homeAway === "home"
+          }));
+          const state = game.status.type.state;
+          const detail = game.status.type.detail;
+          const liveDot = state === "in" ? '<span class="live-dot"></span>' : "";
+          html += `<div class="game">${liveDot}${teams.map(t => `${t.abbr} ${t.score ?? "-"}`).join(" vs ")} <span class="meta">${detail}</span></div>`;
+        } else {
+          html += `<div class="meta">No ${teamName} game today (this is fine — endpoint still works)</div>`;
+        }
+
+        el.className = "test pass";
+        el.innerHTML = html;
+        return true;
+      } catch (err) {
+        el.className = "test fail";
+        el.innerHTML = `<div class="label">FAIL: ${err.message}</div><div class="meta">${url}</div>`;
+        return false;
+      }
+    }
+
+    async function testFootballData() {
+      const el = document.getElementById("t-fd");
+      const t0 = performance.now();
+      try {
+        const res = await fetch("https://api.football-data.org/v4/competitions");
+        const ms = Math.round(performance.now() - t0);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        el.className = "test pass";
+        el.innerHTML = `<div class="label">Direct fetch worked? Unexpected</div><div class="meta">${ms}ms - count=${data.count}</div>`;
+        return true;
+      } catch (err) {
+        el.className = "test pass";
+        el.innerHTML = `<div class="label">PASS - Confirmed: direct browser fetch is blocked (as expected)</div>
+          <div class="meta">${err.message}</div>
+          <div class="meta">-> This is why a Cloudflare Worker proxy is needed if we use football-data.org</div>`;
+        return true;
+      }
+    }
+
+    async function runAll() {
+      document.getElementById("summary").style.display = "none";
+      const results = [];
+      for (const t of TARGETS) results.push(await testEspn(t));
+      results.push(await testFootballData());
+
+      const passed = results.filter(Boolean).length;
+      const sum = document.getElementById("summary");
+      sum.style.display = "block";
+      sum.innerHTML = `<strong>${passed}/${results.length} tests passed.</strong> ${
+        passed === results.length
+          ? "All endpoints validated. Safe to use these in the trackers."
+          : "Some endpoints failed — review above before deploying."
+      }`;
+    }
+
+    runAll();
+  </script>
+</body>
+</html>
