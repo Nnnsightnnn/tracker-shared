@@ -1,6 +1,6 @@
 # tracker-shared
 
-Drop-in live-score module shared by the [nnnsightnnn](https://github.com/nnnsightnnn) tracker apps (Liverpool, Falcons, Hawks, Braves, plus Atlanta United/Dream when those launch). Hits ESPN's free public scoreboard endpoints from the browser — no backend, no API key, no Cloudflare Worker.
+Drop-in live-score module shared by the [nnnsightnnn](https://nnnsightnnn.com) tracker apps (Liverpool, Falcons, Hawks, Braves, plus Atlanta United/Dream when those launch). Hits ESPN's free public scoreboard endpoints from the browser — no backend, no API key, no Cloudflare Worker.
 
 ## Usage
 
